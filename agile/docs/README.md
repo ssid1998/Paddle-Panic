@@ -50,9 +50,9 @@ The workspaces for the agents.
 ### `archive/` (The Memory)
 Completed sprints are moved here by the Archivist.
 
-### `agents/` (The Tools)
-Source definitions for the AI Agents. Copy these to your `.opencode/agents/` folder.
-Slash Commands are located in `agents/commands/`. Copy these to your `.opencode/command/` folder.
+### `agent/` (The Tools)
+Source definitions for the AI Agents. Copy these to your `.opencode/agent/` folder.
+Slash Commands are located in `agent/commands/`. Copy these to your `.opencode/command/` folder.
 
 ---
 
@@ -61,9 +61,9 @@ Slash Commands are located in `agents/commands/`. Copy these to your `.opencode/
 1.  **Installation:**
     To use this framework, you must install the agents and commands into your OpenCode configuration:
     ```bash
-    mkdir -p .opencode/agents .opencode/command
-    cp agile/agents/*.md .opencode/agents/
-    cp agile/agents/commands/*.md .opencode/command/
+    mkdir -p .opencode/agent .opencode/command
+    cp agile/agent/*.md .opencode/agent/
+    cp agile/agent/commands/*.md .opencode/command/
     ```
 2.  **Bash Required:** This framework relies on Bash commands. Windows users should use **Git Bash** or **WSL**.
 3.  **No Commits:** Only the **Archivist** is allowed to run `git commit`. All other agents only modify files.
