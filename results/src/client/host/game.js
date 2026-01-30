@@ -1,11 +1,25 @@
 /**
- * Paddle Panic - Host Screen Game Renderer
+ * Paddle Panic - Host Screen
  * 
  * This script:
  * 1. Connects to the server via Socket.io
- * 2. Receives game state updates
- * 3. Renders the game on the canvas (table, paddles, ball, scores, etc.)
+ * 2. Displays lobby with QR code for joining
+ * 3. Receives game state updates
+ * 4. Renders the game on the canvas (table, paddles, ball, scores, etc.)
  */
+
+// --- DOM Elements ---
+const lobbyScreen = document.getElementById('lobby-screen');
+const qrSection = document.getElementById('qr-section');
+const qrCodeContainer = document.getElementById('qr-code');
+const controllerUrlText = document.getElementById('controller-url');
+const player1Name = document.getElementById('player1-name');
+const player1Status = document.getElementById('player1-status');
+const player1Indicator = document.getElementById('player1-indicator');
+const player2Name = document.getElementById('player2-name');
+const player2Status = document.getElementById('player2-status');
+const player2Indicator = document.getElementById('player2-indicator');
+const lobbyStatusText = document.getElementById('lobby-status');
 
 // --- Canvas Setup ---
 const canvas = document.getElementById('gameCanvas');
@@ -15,7 +29,17 @@ const ctx = canvas.getContext('2d');
 canvas.width = 1200;
 canvas.height = 700;
 
-// --- Game State (received from server) ---
+// --- State ---
+let lobbyState = {
+  state: 'WAITING_FOR_P1',
+  showQR: true,
+  controllerUrl: '',
+  player1: null,
+  player2: null,
+  gameMode: null,
+  aiDifficulty: null
+};
+
 let gameState = {
   phase: 'IDLE',
   table: {
@@ -49,21 +73,197 @@ let gameState = {
   winner: null
 };
 
+let isInGame = false;
+
 // --- Socket.io Connection ---
 const socket = io();
 
 socket.on('connect', () => {
   console.log('Connected to server');
+  socket.emit('registerHost');
 });
 
 socket.on('disconnect', () => {
   console.log('Disconnected from server');
 });
 
+// Receive lobby state updates
+socket.on('lobbyState', (state) => {
+  lobbyState = state;
+  updateLobbyUI();
+});
+
 // Receive game state updates from server
 socket.on('gameState', (state) => {
   gameState = state;
+  
+  // Check if we should switch to game view
+  if (state.phase === 'COUNTDOWN' || state.phase === 'PLAYING' || state.phase === 'GAME_OVER') {
+    if (!isInGame) {
+      showGameView();
+    }
+  }
 });
+
+// --- QR Code Generation ---
+function generateQRCode(url) {
+  if (!qrCodeContainer) return;
+  
+  // Clear previous QR code
+  qrCodeContainer.innerHTML = '';
+  
+  try {
+    // Use QRCode library (loaded via CDN)
+    if (typeof QRCode !== 'undefined') {
+      // Create a canvas element
+      const canvas = document.createElement('canvas');
+      qrCodeContainer.appendChild(canvas);
+      
+      // Generate QR code on the canvas
+      QRCode.toCanvas(canvas, url, {
+        width: 250,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      }, function(error) {
+        if (error) {
+          console.error('QR Code generation error:', error);
+          qrCodeContainer.innerHTML = '<p style="color: #666;">QR Code error</p>';
+        } else {
+          console.log('QR Code generated successfully for:', url);
+        }
+      });
+    } else {
+      console.error('QRCode library not loaded');
+      qrCodeContainer.innerHTML = '<p style="color: #666;">QR Code library not loaded</p>';
+    }
+  } catch (error) {
+    console.error('Failed to generate QR code:', error);
+    qrCodeContainer.innerHTML = '<p style="color: #666;">QR Code unavailable</p>';
+  }
+}
+
+// --- Lobby UI Updates ---
+function updateLobbyUI() {
+  // Update QR code visibility
+  if (qrSection) {
+    if (lobbyState.showQR) {
+      qrSection.classList.remove('hidden');
+      if (lobbyState.controllerUrl) {
+        generateQRCode(lobbyState.controllerUrl);
+        if (controllerUrlText) {
+          controllerUrlText.textContent = lobbyState.controllerUrl;
+        }
+      }
+    } else {
+      qrSection.classList.add('hidden');
+    }
+  }
+  
+  // Update Player 1 display
+  if (player1Name && player1Status) {
+    if (lobbyState.player1) {
+      player1Name.textContent = lobbyState.player1.name || 'Player 1';
+      if (lobbyState.player1.ready) {
+        player1Status.textContent = 'READY!';
+        player1Status.className = 'player-status';
+      } else {
+        player1Status.textContent = 'Joining...';
+        player1Status.className = 'player-status waiting';
+      }
+      // Update player 1 indicator color
+      if (player1Indicator && lobbyState.player1.color) {
+        player1Indicator.style.backgroundColor = lobbyState.player1.color;
+      }
+    } else {
+      player1Name.textContent = 'Waiting...';
+      player1Status.textContent = '';
+      if (player1Indicator) {
+        player1Indicator.style.backgroundColor = '#e74c3c'; // Default red
+      }
+    }
+  }
+  
+  // Update Player 2 display
+  if (player2Name && player2Status) {
+    if (lobbyState.player2) {
+      player2Name.textContent = lobbyState.player2.name || 'Player 2';
+      if (lobbyState.player2.ready) {
+        player2Status.textContent = 'READY!';
+        player2Status.className = 'player-status';
+      } else {
+        player2Status.textContent = 'Joining...';
+        player2Status.className = 'player-status waiting';
+      }
+      // Update player 2 indicator color
+      if (player2Indicator && lobbyState.player2.color) {
+        player2Indicator.style.backgroundColor = lobbyState.player2.color;
+      }
+    } else if (lobbyState.gameMode === 'PVP') {
+      player2Name.textContent = 'Scan to join!';
+      player2Status.textContent = '';
+      if (player2Indicator) {
+        player2Indicator.style.backgroundColor = '#3498db'; // Default blue
+      }
+    } else {
+      player2Name.textContent = 'Waiting...';
+      player2Status.textContent = '';
+      if (player2Indicator) {
+        player2Indicator.style.backgroundColor = '#3498db'; // Default blue
+      }
+    }
+  }
+  
+  // Update lobby status message
+  if (lobbyStatusText) {
+    switch (lobbyState.state) {
+      case 'WAITING_FOR_P1':
+        lobbyStatusText.textContent = 'Scan the QR code to join!';
+        break;
+      case 'P1_ENTERING_NAME':
+        lobbyStatusText.textContent = `${lobbyState.player1?.name || 'Player 1'} is entering their name...`;
+        break;
+      case 'P1_SELECTING_MODE':
+        lobbyStatusText.textContent = `${lobbyState.player1?.name || 'Player 1'} is choosing game mode...`;
+        break;
+      case 'P1_SELECTING_DIFFICULTY':
+        lobbyStatusText.textContent = `${lobbyState.player1?.name || 'Player 1'} is selecting AI difficulty...`;
+        break;
+      case 'WAITING_FOR_P2':
+        lobbyStatusText.textContent = 'Waiting for Player 2 to scan...';
+        break;
+      case 'P2_ENTERING_NAME':
+        lobbyStatusText.textContent = 'Player 2 is entering their name...';
+        break;
+      case 'READY_CHECK':
+        lobbyStatusText.textContent = 'Press READY to start!';
+        break;
+      case 'GAME_STARTING':
+        lobbyStatusText.textContent = 'Game starting...';
+        break;
+      case 'PLAYING':
+        showGameView();
+        break;
+      default:
+        lobbyStatusText.textContent = 'Waiting for players...';
+    }
+  }
+}
+
+// --- View Switching ---
+function showGameView() {
+  isInGame = true;
+  if (lobbyScreen) lobbyScreen.classList.add('hidden');
+  if (canvas) canvas.classList.add('visible');
+}
+
+function showLobbyView() {
+  isInGame = false;
+  if (lobbyScreen) lobbyScreen.classList.remove('hidden');
+  if (canvas) canvas.classList.remove('visible');
+}
 
 // --- Rendering Functions ---
 
@@ -141,22 +341,33 @@ function drawBall() {
 }
 
 /**
- * Draw the scores
+ * Draw the scores with player names
  */
 function drawScores() {
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.font = 'bold 72px Arial';
+  // Player names
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = '24px Arial';
   ctx.textAlign = 'center';
   
+  const p1Name = lobbyState.player1?.name || 'Player 1';
+  const p2Name = lobbyState.player2?.name || 'Player 2';
+  
+  ctx.fillText(p1Name, canvas.width / 4, 40);
+  ctx.fillText(p2Name, (canvas.width / 4) * 3, 40);
+  
+  // Scores
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.font = 'bold 72px Arial';
+  
   // Player 1 score (left side)
-  ctx.fillText(gameState.player1Score, canvas.width / 4, 80);
+  ctx.fillText(gameState.player1Score, canvas.width / 4, 110);
   
   // Player 2 score (right side)
-  ctx.fillText(gameState.player2Score, (canvas.width / 4) * 3, 80);
+  ctx.fillText(gameState.player2Score, (canvas.width / 4) * 3, 110);
   
   // Separator
   ctx.font = 'bold 48px Arial';
-  ctx.fillText('-', canvas.width / 2, 75);
+  ctx.fillText('-', canvas.width / 2, 100);
 }
 
 /**
@@ -193,8 +404,11 @@ function drawGameOver() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
-  const winnerText = `Player ${gameState.winner} Wins!`;
-  ctx.fillText(winnerText, canvas.width / 2, canvas.height / 2 - 50);
+  const winnerName = gameState.winner === 1 
+    ? (lobbyState.player1?.name || 'Player 1')
+    : (lobbyState.player2?.name || 'Player 2');
+  
+  ctx.fillText(`${winnerName} Wins!`, canvas.width / 2, canvas.height / 2 - 50);
   
   // Final score
   ctx.fillStyle = '#ffffff';
@@ -208,29 +422,7 @@ function drawGameOver() {
   // Restart instruction
   ctx.font = '28px Arial';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText('Press any button on controller to play again', canvas.width / 2, canvas.height / 2 + 100);
-  
-  ctx.textBaseline = 'alphabetic'; // Reset
-}
-
-/**
- * Draw idle/waiting screen
- */
-function drawIdleScreen() {
-  // Semi-transparent overlay
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // Waiting message
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('Waiting for players...', canvas.width / 2, canvas.height / 2 - 30);
-  
-  ctx.font = '28px Arial';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText('Scan QR code or open /controller on your phone', canvas.width / 2, canvas.height / 2 + 30);
+  ctx.fillText('Press REMATCH on your controller to play again', canvas.width / 2, canvas.height / 2 + 100);
   
   ctx.textBaseline = 'alphabetic'; // Reset
 }
@@ -240,33 +432,48 @@ function drawIdleScreen() {
  * Runs 60 times per second using requestAnimationFrame
  */
 function render() {
-  // Clear canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // Always draw the base game elements
-  drawTable();
-  drawPaddle(gameState.paddle1);
-  drawPaddle(gameState.paddle2);
-  drawBall();
-  drawScores();
-  
-  // Draw overlays based on game phase
-  switch (gameState.phase) {
-    case 'IDLE':
-      drawIdleScreen();
-      break;
-    case 'COUNTDOWN':
-      drawCountdown();
-      break;
-    case 'GAME_OVER':
-      drawGameOver();
-      break;
-    // 'PLAYING' and 'POINT_SCORED' just show the game
+  // Only render game canvas if in game mode
+  if (isInGame) {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Always draw the base game elements
+    drawTable();
+    drawPaddle(gameState.paddle1);
+    drawPaddle(gameState.paddle2);
+    drawBall();
+    drawScores();
+    
+    // Draw overlays based on game phase
+    switch (gameState.phase) {
+      case 'COUNTDOWN':
+        drawCountdown();
+        break;
+      case 'GAME_OVER':
+        drawGameOver();
+        break;
+      // 'PLAYING' and 'POINT_SCORED' just show the game
+    }
   }
   
   // Schedule next frame
   requestAnimationFrame(render);
 }
+
+// --- Initialization ---
+
+// Generate initial QR code
+fetch('/api/server-info')
+  .then(res => res.json())
+  .then(info => {
+    if (info.controllerUrl) {
+      generateQRCode(info.controllerUrl);
+      if (controllerUrlText) {
+        controllerUrlText.textContent = info.controllerUrl;
+      }
+    }
+  })
+  .catch(err => console.error('Failed to get server info:', err));
 
 // Start the render loop
 render();

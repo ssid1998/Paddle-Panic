@@ -32,8 +32,13 @@ body {
     width: 100vw;
 }
 
+/* ============================================
+   STATUS BAR
+   ============================================ */
+
 #status-bar {
     height: 50px;
+    min-height: 50px;
     background-color: #16213e;
     display: flex;
     align-items: center;
@@ -71,6 +76,267 @@ body {
 #connection-status.connecting {
     background-color: #f39c12;
     color: white;
+}
+
+/* ============================================
+   SCREENS
+   ============================================ */
+
+.screen {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+}
+
+.screen.active {
+    display: flex;
+}
+
+.screen-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    text-align: center;
+}
+
+.screen-content h2 {
+    color: #ffffff;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+.screen-content p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+/* ============================================
+   LOADER ANIMATION
+   ============================================ */
+
+.loader {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.2);
+    border-top: 5px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ============================================
+   NAME INPUT SCREEN
+   ============================================ */
+
+#name-input {
+    width: 100%;
+    max-width: 300px;
+    padding: 15px 20px;
+    font-size: 24px;
+    text-align: center;
+    border: 3px solid #3498db;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    margin-bottom: 20px;
+}
+
+#name-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#name-input:focus {
+    outline: none;
+    border-color: #27ae60;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.primary-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 18px 30px;
+    font-size: 22px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(180deg, #27ae60 0%, #1e8449 100%);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    transition: transform 0.1s, filter 0.1s;
+}
+
+.primary-btn:active {
+    transform: scale(0.98);
+    filter: brightness(0.9);
+}
+
+.secondary-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 15px 30px;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.1s;
+}
+
+.secondary-btn:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================
+   MODE SELECTION
+   ============================================ */
+
+.mode-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 25px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.1s, border-color 0.1s, background 0.1s;
+}
+
+.mode-btn:active {
+    transform: scale(0.98);
+    border-color: #3498db;
+    background: rgba(52, 152, 219, 0.2);
+}
+
+.mode-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.mode-title {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.mode-desc {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 16px;
+}
+
+/* ============================================
+   DIFFICULTY SELECTION
+   ============================================ */
+
+.difficulty-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.1s, filter 0.1s;
+}
+
+.difficulty-btn:active {
+    transform: scale(0.98);
+    filter: brightness(0.9);
+}
+
+.difficulty-btn.easy {
+    background: linear-gradient(180deg, #27ae60 0%, #1e8449 100%);
+}
+
+.difficulty-btn.medium {
+    background: linear-gradient(180deg, #f39c12 0%, #d68910 100%);
+}
+
+.difficulty-btn.hard {
+    background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.diff-title {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.diff-desc {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+}
+
+/* ============================================
+   READY SCREEN
+   ============================================ */
+
+.ready-btn {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #27ae60 0%, #1e8449 100%);
+    border: 8px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 30px 0;
+    transition: transform 0.1s, filter 0.1s;
+    box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4);
+}
+
+.ready-btn:active {
+    transform: scale(0.95);
+    filter: brightness(0.9);
+}
+
+.ready-btn.pressed {
+    background: linear-gradient(180deg, #1e8449 0%, #145a32 100%);
+    border-color: #27ae60;
+}
+
+#opponent-status {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 16px;
+}
+
+/* ============================================
+   GAME CONTROLS
+   ============================================ */
+
+#screen-game {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+}
+
+#screen-game.active {
+    display: flex;
 }
 
 .control-btn {
@@ -117,4 +383,30 @@ body {
 .control-btn.pressed {
     filter: brightness(0.6);
     transform: scale(0.98);
+}
+
+/* ============================================
+   GAME OVER SCREEN
+   ============================================ */
+
+#gameover-result {
+    font-size: 36px !important;
+}
+
+#gameover-result.win {
+    color: #f1c40f !important;
+}
+
+#gameover-result.lose {
+    color: #e74c3c !important;
+}
+
+#gameover-score {
+    font-size: 24px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 30px;
+}
+
+#btn-rematch {
+    margin-bottom: 15px;
 }

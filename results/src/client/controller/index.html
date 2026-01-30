@@ -8,20 +8,116 @@
 </head>
 <body>
     <div id="controller-container">
+        <!-- Connection Status Bar -->
         <div id="status-bar">
             <span id="player-info">Joining...</span>
             <span id="connection-status">Connecting...</span>
         </div>
         
-        <button id="btn-up" class="control-btn">
-            <span class="arrow">▲</span>
-            <span class="label">UP</span>
-        </button>
+        <!-- Screen 1: Connecting -->
+        <div id="screen-connecting" class="screen active">
+            <div class="screen-content">
+                <h2>Connecting...</h2>
+                <div class="loader"></div>
+            </div>
+        </div>
         
-        <button id="btn-down" class="control-btn">
-            <span class="arrow">▼</span>
-            <span class="label">DOWN</span>
-        </button>
+        <!-- Screen 2: Name Entry -->
+        <div id="screen-name" class="screen">
+            <div class="screen-content">
+                <h2>Enter Your Name</h2>
+                <input type="text" id="name-input" maxlength="12" placeholder="Your name" autocomplete="off">
+                <button id="btn-name-submit" class="primary-btn">Continue</button>
+                <button id="btn-name-skip" class="secondary-btn">Skip</button>
+            </div>
+        </div>
+        
+        <!-- Screen 3: Mode Selection (Player 1 only) -->
+        <div id="screen-mode" class="screen">
+            <div class="screen-content">
+                <h2>Choose Game Mode</h2>
+                <button id="btn-mode-pvp" class="mode-btn">
+                    <span class="mode-icon">👥</span>
+                    <span class="mode-title">vs Player</span>
+                    <span class="mode-desc">Play against a friend</span>
+                </button>
+                <button id="btn-mode-pvc" class="mode-btn">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-title">vs RoboPaddle</span>
+                    <span class="mode-desc">Play against AI</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Screen 4: Difficulty Selection (PvC only) -->
+        <div id="screen-difficulty" class="screen">
+            <div class="screen-content">
+                <h2>Select Difficulty</h2>
+                <button id="btn-easy" class="difficulty-btn easy">
+                    <span class="diff-title">Easy</span>
+                    <span class="diff-desc">Relaxed pace</span>
+                </button>
+                <button id="btn-medium" class="difficulty-btn medium">
+                    <span class="diff-title">Medium</span>
+                    <span class="diff-desc">Balanced challenge</span>
+                </button>
+                <button id="btn-hard" class="difficulty-btn hard">
+                    <span class="diff-title">Hard</span>
+                    <span class="diff-desc">No mercy!</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Screen 5: Waiting for Player 2 (PvP mode) -->
+        <div id="screen-waiting" class="screen">
+            <div class="screen-content">
+                <h2>Waiting for Player 2</h2>
+                <p>Ask a friend to scan the QR code!</p>
+                <div class="loader"></div>
+            </div>
+        </div>
+        
+        <!-- Screen 6: Ready Button -->
+        <div id="screen-ready" class="screen">
+            <div class="screen-content">
+                <h2 id="ready-title">Ready?</h2>
+                <p id="ready-subtitle">Press when you're ready to play!</p>
+                <button id="btn-ready" class="ready-btn">READY!</button>
+                <p id="opponent-status"></p>
+            </div>
+        </div>
+        
+        <!-- Screen 7: Game Controls -->
+        <div id="screen-game" class="screen">
+            <button id="btn-up" class="control-btn">
+                <span class="arrow">▲</span>
+                <span class="label">UP</span>
+            </button>
+            
+            <button id="btn-down" class="control-btn">
+                <span class="arrow">▼</span>
+                <span class="label">DOWN</span>
+            </button>
+        </div>
+        
+        <!-- Screen 8: Game Over -->
+        <div id="screen-gameover" class="screen">
+            <div class="screen-content">
+                <h2 id="gameover-result">Game Over</h2>
+                <p id="gameover-score"></p>
+                <button id="btn-rematch" class="primary-btn">Rematch</button>
+                <button id="btn-leave" class="secondary-btn">Leave</button>
+            </div>
+        </div>
+        
+        <!-- Screen 9: Game Full -->
+        <div id="screen-full" class="screen">
+            <div class="screen-content">
+                <h2>Game Full</h2>
+                <p>Please wait for the current game to end.</p>
+                <div class="loader"></div>
+            </div>
+        </div>
     </div>
     
     <!-- Socket.io client library -->

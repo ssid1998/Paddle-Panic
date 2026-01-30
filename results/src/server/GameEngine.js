@@ -395,6 +395,18 @@ class GameEngine {
   }
   
   /**
+   * Set paddle color
+   */
+  setPaddleColor(paddleNumber, color) {
+    if (paddleNumber === 1) {
+      this.state.paddle1.color = color;
+    } else if (paddleNumber === 2) {
+      this.state.paddle2.color = color;
+    }
+    this.broadcastState();
+  }
+  
+  /**
    * Remove a player
    */
   removePlayer(socketId) {

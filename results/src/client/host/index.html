@@ -5,11 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paddle Panic - Host Screen</title>
     <link rel="stylesheet" href="/host/styles.css">
+    <!-- QR Code library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 </head>
 <body>
     <div id="game-container">
-        <h1 id="game-title">PADDLE PANIC</h1>
-        <p id="game-subtitle">Open /controller on your phone to play!</p>
+        <!-- Lobby Screen -->
+        <div id="lobby-screen">
+            <h1 id="game-title">PADDLE PANIC</h1>
+            
+            <div id="qr-section">
+                <div id="qr-code"></div>
+                <p id="qr-instruction">Scan with your phone to play!</p>
+                <p id="controller-url"></p>
+            </div>
+            
+            <div id="players-section">
+                <div class="player-slot" id="player1-slot">
+                    <div class="player-indicator" id="player1-indicator"></div>
+                    <span class="player-name" id="player1-name">Waiting...</span>
+                    <span class="player-status" id="player1-status"></span>
+                </div>
+                <div class="vs-text">VS</div>
+                <div class="player-slot" id="player2-slot">
+                    <div class="player-indicator" id="player2-indicator"></div>
+                    <span class="player-name" id="player2-name">Waiting...</span>
+                    <span class="player-status" id="player2-status"></span>
+                </div>
+            </div>
+            
+            <p id="lobby-status">Waiting for players to join...</p>
+        </div>
+        
+        <!-- Game Canvas (hidden during lobby) -->
         <canvas id="gameCanvas"></canvas>
     </div>
     
