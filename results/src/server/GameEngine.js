@@ -176,10 +176,21 @@ class GameEngine {
     this.state.countdown = 3;
     this.resetBall();
     
+    // Emit initial countdown sound
+    this.io.emit('soundEffect', { type: 'countdown', number: 3 });
+    
     // Countdown timer
     const countdownInterval = setInterval(() => {
       this.state.countdown--;
       this.broadcastState();
+      
+      // Emit countdown sound for each number
+      if (this.state.countdown > 0) {
+        this.io.emit('soundEffect', { type: 'countdown', number: this.state.countdown });
+      } else {
+        // Emit "GO!" sound
+        this.io.emit('soundEffect', { type: 'go' });
+      }
       
       if (this.state.countdown <= 0) {
         clearInterval(countdownInterval);
@@ -268,12 +279,14 @@ class GameEngine {
     if (ball.y - ball.radius <= 0) {
       ball.y = ball.radius;
       ball.velocityY = -ball.velocityY;
+      this.io.emit('soundEffect', { type: 'wallHit' });
     }
     
     // Bottom wall
     if (ball.y + ball.radius >= table.height) {
       ball.y = table.height - ball.radius;
       ball.velocityY = -ball.velocityY;
+      this.io.emit('soundEffect', { type: 'wallHit' });
     }
   }
   
@@ -338,6 +351,9 @@ class GameEngine {
       // Hit right paddle, move ball to left of paddle
       ball.x = paddle.x - ball.radius;
     }
+    
+    // Emit paddle hit sound event
+    this.io.emit('soundEffect', { type: 'paddleHit' });
   }
   
   /**
@@ -369,6 +385,9 @@ class GameEngine {
     }
     
     console.log(`⚽ Point scored! Player 1: ${this.state.player1Score}, Player 2: ${this.state.player2Score}`);
+    
+    // Emit score sound event
+    this.io.emit('soundEffect', { type: 'score', player: player });
     
     // Check for winner
     if (this.state.player1Score >= this.state.winningScore) {

@@ -78,6 +78,132 @@ let isPaused = false;
 let pauseCountdown = 0;
 let pausedPlayerName = '';
 
+// --- Audio Manager ---
+const AudioManager = {
+  audioContext: null,
+  muted: false,
+  
+  /**
+   * Initialize the audio context (must be called after user interaction)
+   */
+  init() {
+    if (this.audioContext) return;
+    
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      console.log('AudioManager initialized');
+      
+      // Load mute state from localStorage
+      const savedMute = localStorage.getItem('paddlePanicMuted');
+      this.muted = savedMute === 'true';
+      this.updateMuteButton();
+    } catch (e) {
+      console.warn('Web Audio API not supported:', e);
+    }
+  },
+  
+  /**
+   * Resume audio context (needed for browsers that suspend it)
+   */
+  resume() {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+  },
+  
+  /**
+   * Toggle mute state
+   */
+  toggleMute() {
+    this.muted = !this.muted;
+    localStorage.setItem('paddlePanicMuted', this.muted.toString());
+    this.updateMuteButton();
+    console.log('Audio muted:', this.muted);
+  },
+  
+  /**
+   * Update mute button visual state
+   */
+  updateMuteButton() {
+    const muteBtn = document.getElementById('mute-btn');
+    if (muteBtn) {
+      muteBtn.textContent = this.muted ? '🔇' : '🔊';
+      muteBtn.title = this.muted ? 'Unmute' : 'Mute';
+    }
+  },
+  
+  /**
+   * Play a synthesized beep sound
+   */
+  playTone(frequency, duration, type = 'sine', volume = 0.3) {
+    if (this.muted || !this.audioContext) return;
+    
+    try {
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = type;
+      
+      gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+      
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + duration);
+    } catch (e) {
+      console.warn('Error playing tone:', e);
+    }
+  },
+  
+  /**
+   * Paddle hit - short high "pop" sound
+   */
+  playPaddleHit() {
+    this.playTone(800, 0.08, 'square', 0.2);
+  },
+  
+  /**
+   * Wall hit - lower "thud" sound
+   */
+  playWallHit() {
+    this.playTone(300, 0.1, 'sine', 0.15);
+  },
+  
+  /**
+   * Score - triumphant rising tone
+   */
+  playScore() {
+    if (this.muted || !this.audioContext) return;
+    
+    // Play a quick ascending arpeggio
+    setTimeout(() => this.playTone(523, 0.1, 'sine', 0.25), 0);    // C5
+    setTimeout(() => this.playTone(659, 0.1, 'sine', 0.25), 100);  // E5
+    setTimeout(() => this.playTone(784, 0.15, 'sine', 0.3), 200);  // G5
+  },
+  
+  /**
+   * Countdown beep
+   */
+  playCountdown(number) {
+    // Higher pitch for lower numbers (building tension)
+    const freq = 400 + (3 - number) * 100;
+    this.playTone(freq, 0.15, 'sine', 0.3);
+  },
+  
+  /**
+   * GO! sound - two quick ascending notes
+   */
+  playGo() {
+    if (this.muted || !this.audioContext) return;
+    
+    setTimeout(() => this.playTone(600, 0.1, 'square', 0.25), 0);
+    setTimeout(() => this.playTone(900, 0.2, 'square', 0.3), 100);
+  }
+};
+
 // --- Voice Announcement (REMOVED) ---
 // Voice feature has been removed per user request
 
@@ -149,6 +275,31 @@ socket.on('forfeitWin', (data) => {
   console.log('Forfeit win:', data);
   isPaused = false;
   // Voice announcement removed
+});
+
+// Handle sound effects from server
+socket.on('soundEffect', (data) => {
+  // Initialize audio context on first sound event (requires user interaction first)
+  AudioManager.init();
+  AudioManager.resume();
+  
+  switch (data.type) {
+    case 'paddleHit':
+      AudioManager.playPaddleHit();
+      break;
+    case 'wallHit':
+      AudioManager.playWallHit();
+      break;
+    case 'score':
+      AudioManager.playScore();
+      break;
+    case 'countdown':
+      AudioManager.playCountdown(data.number);
+      break;
+    case 'go':
+      AudioManager.playGo();
+      break;
+  }
 });
 
 // --- QR Code Generation ---
@@ -569,5 +720,20 @@ fetch('/api/server-info')
 
 // Start the render loop
 render();
+
+// --- Mute Button Handler ---
+const muteBtn = document.getElementById('mute-btn');
+if (muteBtn) {
+  muteBtn.addEventListener('click', () => {
+    AudioManager.init(); // Initialize if not already
+    AudioManager.toggleMute();
+  });
+}
+
+// Initialize audio on first click anywhere (browser requirement)
+document.addEventListener('click', () => {
+  AudioManager.init();
+  AudioManager.resume();
+}, { once: true });
 
 console.log('Paddle Panic Host Screen loaded');
