@@ -21,7 +21,8 @@ const screens = {
   ready: document.getElementById('screen-ready'),
   game: document.getElementById('screen-game'),
   gameover: document.getElementById('screen-gameover'),
-  full: document.getElementById('screen-full')
+  full: document.getElementById('screen-full'),
+  thanks: document.getElementById('screen-thanks')
 };
 
 // Name screen elements
@@ -51,8 +52,10 @@ const btnDown = document.getElementById('btn-down');
 // Game over elements
 const gameoverResult = document.getElementById('gameover-result');
 const gameoverScore = document.getElementById('gameover-score');
-const btnRematch = document.getElementById('btn-rematch');
-const btnLeave = document.getElementById('btn-leave');
+// REMOVED: btnRematch, btnLeave, rematchStatus - rematch feature removed
+
+// Thanks screen elements
+// (No button - screen auto-closes)
 
 // --- Player State ---
 let myPlayerNumber = null;
@@ -202,6 +205,15 @@ socket.on('difficultyAccepted', (data) => {
   showScreen('ready');
 });
 
+// Handle player 2 joined (sent to Player 1)
+socket.on('player2Joined', (data) => {
+  console.log(`🎮 Player 2 joined: ${data.name}`);
+  console.log(`🎮 Current screen: ${currentScreen}, myPlayerNumber: ${myPlayerNumber}`);
+  // Switch to ready screen
+  showScreen('ready');
+  console.log(`🎮 After showScreen, currentScreen: ${currentScreen}`);
+});
+
 // Handle ready accepted
 socket.on('readyAccepted', () => {
   console.log('Ready accepted!');
@@ -209,6 +221,27 @@ socket.on('readyAccepted', () => {
   btnReady.textContent = 'WAITING...';
   btnReady.disabled = true;
 });
+
+// REMOVED: rematchAccepted handler - rematch feature removed
+// REMOVED: rematchPending handler - rematch feature removed
+
+// Handle left game confirmation
+socket.on('leftGame', () => {
+  console.log('Left game confirmed');
+  showScreen('thanks');
+  // Reset local state
+  myPlayerNumber = null;
+  myColor = null;
+  myName = '';
+  isFirstPlayer = false;
+  if (playerInfo) {
+    playerInfo.textContent = 'Joining...';
+    playerInfo.style.backgroundColor = '#555';
+  }
+});
+
+// REMOVED: returnToModeSelect handler - rematch feature removed
+// REMOVED: opponentLeft handler - rematch feature removed
 
 // Handle game full
 socket.on('gameFull', (data) => {
@@ -218,7 +251,7 @@ socket.on('gameFull', (data) => {
 
 // Handle lobby state updates
 socket.on('lobbyState', (state) => {
-  console.log('Lobby state:', state.state);
+  console.log('Lobby state:', state.state, 'Current screen:', currentScreen, 'My player:', myPlayerNumber);
   
   // Update opponent status on ready screen
   if (currentScreen === 'ready' && opponentStatus) {
@@ -235,8 +268,17 @@ socket.on('lobbyState', (state) => {
     }
   }
   
-  // If waiting for P2 and they joined, show ready screen
-  if (currentScreen === 'waiting' && state.state === 'READY_CHECK') {
+  // If waiting for P2 and they joined (state is READY_CHECK or P2_ENTERING_NAME), show ready screen
+  if (currentScreen === 'waiting' && myPlayerNumber === 1) {
+    if (state.state === 'READY_CHECK' || state.state === 'P2_ENTERING_NAME') {
+      console.log('P2 joined! Switching to ready screen');
+      showScreen('ready');
+    }
+  }
+  
+  // If P1 and state is READY_CHECK but we're still on waiting, force to ready
+  if (myPlayerNumber === 1 && state.state === 'READY_CHECK' && currentScreen === 'waiting') {
+    console.log('Forcing switch to ready screen');
     showScreen('ready');
   }
   
@@ -255,15 +297,13 @@ socket.on('gameState', (state) => {
     }
   }
   
-  // Show game over screen
+  // Show game over screen (simplified - no rematch)
   if (state.phase === 'GAME_OVER') {
-    showScreen('gameover');
-    
     // Determine if we won or lost
     const iWon = state.winner === myPlayerNumber;
     
     if (gameoverResult) {
-      gameoverResult.textContent = iWon ? 'You Win!' : 'You Lose!';
+      gameoverResult.textContent = iWon ? '🎉 You Win!' : 'You Lose';
       gameoverResult.className = iWon ? 'win' : 'lose';
     }
     
@@ -275,7 +315,27 @@ socket.on('gameState', (state) => {
     if (navigator.vibrate) {
       navigator.vibrate(iWon ? [200, 100, 200] : [100, 50, 100, 50, 100]);
     }
+    
+    // Show game over screen briefly, then transition to thanks
+    showScreen('gameover');
   }
+});
+
+// Handle game ended (server will reset lobby)
+socket.on('gameEnded', () => {
+  console.log('Game ended - showing thanks screen');
+  // Show thanks screen after a brief moment showing win/lose
+  setTimeout(() => {
+    showScreen('thanks');
+    
+    // Close the browser tab after 3 seconds
+    setTimeout(() => {
+      console.log('Closing controller window');
+      window.close();
+      // If window.close() doesn't work (some browsers block it), 
+      // show a message that they can close the tab
+    }, 3000);
+  }, 3000); // Show win/lose for 3 seconds, then thanks
 });
 
 // --- Button Event Handlers ---
@@ -343,32 +403,11 @@ if (btnReady) {
   });
 }
 
-// Rematch button
-if (btnRematch) {
-  btnRematch.addEventListener('click', () => {
-    socket.emit('restartGame');
-    showScreen('connecting');
-  });
-}
+// REMOVED: Rematch button handler - rematch feature removed
 
-// Leave button
-if (btnLeave) {
-  btnLeave.addEventListener('click', () => {
-    socket.emit('leaveGame');
-    showScreen('connecting');
-    // Reset state
-    myPlayerNumber = null;
-    myColor = null;
-    myName = '';
-    isFirstPlayer = false;
-    if (playerInfo) {
-      playerInfo.textContent = 'Joining...';
-      playerInfo.style.backgroundColor = '#555';
-    }
-    // Reconnect
-    socket.emit('registerController');
-  });
-}
+// REMOVED: Leave button handler - game ends automatically now
+
+// REMOVED: Rejoin button handler - screen auto-closes now
 
 // --- Game Control Input Handling ---
 

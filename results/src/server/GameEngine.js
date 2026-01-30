@@ -24,6 +24,9 @@ class GameEngine {
     this.aiDifficulty = null; // 'EASY', 'MEDIUM', 'HARD'
     this.lastTickTime = Date.now();
     
+    // Callback for game over
+    this.onGameOver = null;
+    
     // Game states
     this.STATE = {
       IDLE: 'IDLE',
@@ -90,7 +93,7 @@ class GameEngine {
       // Scores
       player1Score: 0,
       player2Score: 0,
-      winningScore: 11,
+      winningScore: 11,  // First to 11 wins
       
       // Serving
       servingPlayer: 1,    // 1 or 2
@@ -392,8 +395,14 @@ class GameEngine {
     this.state.phase = this.STATE.GAME_OVER;
     this.state.winner = winner;
     this.resetBall();
+    this.stop(); // Stop the game loop
     console.log(`🏆 Game Over! Player ${winner} wins!`);
     this.broadcastState();
+    
+    // Notify server if callback is set
+    if (this.onGameOver) {
+      this.onGameOver(winner);
+    }
   }
   
   /**

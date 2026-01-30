@@ -100,13 +100,12 @@
             </button>
         </div>
         
-        <!-- Screen 8: Game Over -->
+        <!-- Screen 8: Game Over (simplified - no rematch) -->
         <div id="screen-gameover" class="screen">
             <div class="screen-content">
                 <h2 id="gameover-result">Game Over</h2>
                 <p id="gameover-score"></p>
-                <button id="btn-rematch" class="primary-btn">Rematch</button>
-                <button id="btn-leave" class="secondary-btn">Leave</button>
+                <p class="gameover-message">Thanks for playing!</p>
             </div>
         </div>
         
@@ -116,6 +115,13 @@
                 <h2>Game Full</h2>
                 <p>Please wait for the current game to end.</p>
                 <div class="loader"></div>
+            </div>
+        </div>
+        
+        <!-- Screen 10: Thanks for Playing -->
+        <div id="screen-thanks" class="screen">
+            <div class="screen-content">
+                <h2>Thanks for playing!</h2>
             </div>
         </div>
     </div>

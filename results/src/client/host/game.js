@@ -74,6 +74,12 @@ let gameState = {
 };
 
 let isInGame = false;
+let isPaused = false;
+let pauseCountdown = 0;
+let pausedPlayerName = '';
+
+// --- Voice Announcement (REMOVED) ---
+// Voice feature has been removed per user request
 
 // --- Socket.io Connection ---
 const socket = io();
@@ -91,6 +97,11 @@ socket.on('disconnect', () => {
 socket.on('lobbyState', (state) => {
   lobbyState = state;
   updateLobbyUI();
+  
+  // If lobby resets to waiting, go back to lobby view
+  if (state.state === 'WAITING_FOR_P1' && isInGame) {
+    showLobbyView();
+  }
 });
 
 // Receive game state updates from server
@@ -103,6 +114,41 @@ socket.on('gameState', (state) => {
       showGameView();
     }
   }
+  
+  // Reset flag when a new game starts
+  if (state.phase === 'COUNTDOWN') {
+    // Game starting
+  }
+  
+  // Game over - no voice announcement (removed)
+});
+
+// Handle game paused (player disconnected)
+socket.on('gamePaused', (data) => {
+  console.log('Game paused:', data);
+  isPaused = true;
+  pauseCountdown = data.countdown;
+  pausedPlayerName = data.playerName;
+});
+
+// Handle pause countdown
+socket.on('pauseCountdown', (data) => {
+  pauseCountdown = data.countdown;
+});
+
+// Handle game resumed
+socket.on('gameResumed', () => {
+  console.log('Game resumed!');
+  isPaused = false;
+  pauseCountdown = 0;
+  pausedPlayerName = '';
+});
+
+// Handle forfeit win
+socket.on('forfeitWin', (data) => {
+  console.log('Forfeit win:', data);
+  isPaused = false;
+  // Voice announcement removed
 });
 
 // --- QR Code Generation ---
@@ -391,24 +437,65 @@ function drawCountdown() {
 }
 
 /**
- * Draw the game over screen
+ * Draw the pause overlay (player disconnected)
  */
-function drawGameOver() {
+function drawPauseOverlay() {
   // Semi-transparent overlay
   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Winner announcement
-  ctx.fillStyle = '#f1c40f'; // Gold color
-  ctx.font = 'bold 72px Arial';
+  // Pause message
+  ctx.fillStyle = '#f39c12'; // Orange/warning color
+  ctx.font = 'bold 48px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
+  ctx.fillText(`${pausedPlayerName} disconnected`, canvas.width / 2, canvas.height / 2 - 60);
+  
+  // Countdown
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 72px Arial';
+  ctx.fillText(pauseCountdown.toString(), canvas.width / 2, canvas.height / 2 + 30);
+  
+  // Subtitle
+  ctx.font = '24px Arial';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.fillText('Waiting for reconnection...', canvas.width / 2, canvas.height / 2 + 100);
+  
+  ctx.textBaseline = 'alphabetic';
+}
+
+/**
+ * Draw the game over screen
+ */
+function drawGameOver() {
+  // Semi-transparent overlay
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Get winner info
   const winnerName = gameState.winner === 1 
     ? (lobbyState.player1?.name || 'Player 1')
     : (lobbyState.player2?.name || 'Player 2');
   
+  const winnerColor = gameState.winner === 1
+    ? (lobbyState.player1?.color || '#e74c3c')
+    : (lobbyState.player2?.color || '#3498db');
+  
+  // Winner banner with color
+  ctx.fillStyle = winnerColor;
+  ctx.fillRect(0, canvas.height / 2 - 120, canvas.width, 180);
+  
+  // Winner announcement
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 80px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText(`${winnerName} Wins!`, canvas.width / 2, canvas.height / 2 - 50);
+  
+  // Trophy emoji
+  ctx.font = '60px Arial';
+  ctx.fillText('🏆', canvas.width / 2, canvas.height / 2 - 140);
   
   // Final score
   ctx.fillStyle = '#ffffff';
@@ -416,13 +503,13 @@ function drawGameOver() {
   ctx.fillText(
     `${gameState.player1Score} - ${gameState.player2Score}`, 
     canvas.width / 2, 
-    canvas.height / 2 + 30
+    canvas.height / 2 + 80
   );
   
-  // Restart instruction
-  ctx.font = '28px Arial';
+  // Instructions
+  ctx.font = '24px Arial';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText('Press REMATCH on your controller to play again', canvas.width / 2, canvas.height / 2 + 100);
+  ctx.fillText('Thanks for playing! New game starting soon...', canvas.width / 2, canvas.height / 2 + 150);
   
   ctx.textBaseline = 'alphabetic'; // Reset
 }
@@ -453,6 +540,11 @@ function render() {
         drawGameOver();
         break;
       // 'PLAYING' and 'POINT_SCORED' just show the game
+    }
+    
+    // Draw pause overlay if paused
+    if (isPaused) {
+      drawPauseOverlay();
     }
   }
   

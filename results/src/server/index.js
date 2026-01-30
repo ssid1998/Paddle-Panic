@@ -30,6 +30,24 @@ const io = new Server(httpServer, {
 // Initialize the game engine
 const gameEngine = new GameEngine(io);
 
+// Set up game over callback
+gameEngine.onGameOver = (winner) => {
+  console.log(`🎮 Game engine reported winner: Player ${winner}`);
+  lobbyState.state = LOBBY_STATE.GAME_OVER;
+  broadcastLobbyState();
+  
+  // Notify all controllers to show "thanks for playing" screen
+  io.emit('gameEnded');
+  
+  // Auto-reset lobby after 5 seconds
+  setTimeout(() => {
+    console.log('🔄 Auto-resetting lobby after game over');
+    // Clear all controllers
+    controllers.clear();
+    resetLobby();
+  }, 5000);
+};
+
 // --- Lobby State ---
 const LOBBY_STATE = {
   WAITING_FOR_P1: 'WAITING_FOR_P1',
@@ -40,7 +58,9 @@ const LOBBY_STATE = {
   P2_ENTERING_NAME: 'P2_ENTERING_NAME',
   READY_CHECK: 'READY_CHECK',
   GAME_STARTING: 'GAME_STARTING',
-  PLAYING: 'PLAYING'
+  PLAYING: 'PLAYING',
+  GAME_OVER: 'GAME_OVER',
+  PAUSED: 'PAUSED'
 };
 
 let lobbyState = {
@@ -51,7 +71,9 @@ let lobbyState = {
     1: null, // { socketId, name, ready }
     2: null
   },
-  showQR: true
+  showQR: true,
+  disconnectedPlayer: null, // Track disconnected player for grace period
+  disconnectTimer: null     // Timer for grace period
 };
 
 // Track connected clients (host screens vs controllers)
@@ -130,23 +152,42 @@ function broadcastLobbyState() {
  * Reset lobby to initial state
  */
 function resetLobby() {
+  // Clear any disconnect timer
+  if (lobbyState.disconnectTimer) {
+    clearTimeout(lobbyState.disconnectTimer);
+    lobbyState.disconnectTimer = null;
+  }
+  
   lobbyState = {
     state: LOBBY_STATE.WAITING_FOR_P1,
     gameMode: null,
     aiDifficulty: null,
     players: { 1: null, 2: null },
-    showQR: true
+    showQR: true,
+    disconnectedPlayer: null,
+    disconnectTimer: null
   };
   gameEngine.reset();
   broadcastLobbyState();
 }
 
+// REMOVED: startRematch function - rematch feature removed
+
+// REMOVED: returnPlayer1ToModeSelect function - rematch feature removed
+
 /**
  * Check if all required players are ready and start game
  */
 function checkAndStartGame() {
+  console.log(`🎮 checkAndStartGame called`);
+  console.log(`🎮 gameMode: ${lobbyState.gameMode}`);
+  console.log(`🎮 P1: ${lobbyState.players[1]?.name || 'none'}, ready: ${lobbyState.players[1]?.ready}`);
+  console.log(`🎮 P2: ${lobbyState.players[2]?.name || 'none'}, ready: ${lobbyState.players[2]?.ready}`);
+  
   const p1Ready = lobbyState.players[1]?.ready;
   const p2Ready = lobbyState.gameMode === 'PVC' || lobbyState.players[2]?.ready;
+  
+  console.log(`🎮 p1Ready: ${p1Ready}, p2Ready: ${p2Ready}`);
   
   if (p1Ready && p2Ready) {
     console.log('🎮 All players ready! Starting game...');
@@ -163,6 +204,8 @@ function checkAndStartGame() {
       gameEngine.start();
       broadcastLobbyState();
     }, 500);
+  } else {
+    console.log('🎮 Not all players ready yet');
   }
 }
 
@@ -200,6 +243,8 @@ io.on('connection', (socket) => {
   
   socket.on('registerController', () => {
     console.log(`🎮 Controller registered: ${socket.id}`);
+    console.log(`🎮 Current state: ${lobbyState.state}, gameMode: ${lobbyState.gameMode}`);
+    console.log(`🎮 Player 1: ${lobbyState.players[1]?.name || 'none'}, Player 2: ${lobbyState.players[2]?.name || 'none'}`);
     
     // Determine which player slot to assign
     if (!lobbyState.players[1]) {
@@ -222,8 +267,9 @@ io.on('connection', (socket) => {
       
       console.log(`👤 Player 1 assigned: ${socket.id}`);
       
-    } else if (!lobbyState.players[2] && lobbyState.gameMode === 'PVP') {
+    } else if (!lobbyState.players[2] && (lobbyState.gameMode === 'PVP' || lobbyState.state === LOBBY_STATE.WAITING_FOR_P2)) {
       // Assign as Player 2 (PvP mode only)
+      // Check both gameMode AND state to be more robust
       lobbyState.players[2] = {
         socketId: socket.id,
         name: 'Player 2',
@@ -244,6 +290,7 @@ io.on('connection', (socket) => {
       
     } else {
       // Game is full or not in PvP mode
+      console.log(`🎮 Cannot assign player - game full or wrong mode`);
       socket.emit('gameFull', { message: 'Game is full. Please wait for the current game to end.' });
       return;
     }
@@ -254,10 +301,18 @@ io.on('connection', (socket) => {
   // Handle name submission
   socket.on('setName', (data) => {
     const controller = controllers.get(socket.id);
-    if (!controller) return;
+    if (!controller) {
+      console.log(`⚠️ setName from unknown controller: ${socket.id}`);
+      return;
+    }
     
     const playerNum = controller.playerNumber;
     const name = (data.name || '').trim().substring(0, 12) || `Player ${playerNum}`;
+    
+    if (!lobbyState.players[playerNum]) {
+      console.log(`⚠️ Player ${playerNum} not in lobby state when setting name`);
+      return;
+    }
     
     lobbyState.players[playerNum].name = name;
     console.log(`📝 Player ${playerNum} set name: ${name}`);
@@ -268,8 +323,40 @@ io.on('connection', (socket) => {
     // Progress to next state
     if (playerNum === 1) {
       lobbyState.state = LOBBY_STATE.P1_SELECTING_MODE;
+      console.log(`📝 State -> P1_SELECTING_MODE`);
     } else {
       lobbyState.state = LOBBY_STATE.READY_CHECK;
+      console.log(`📝 State -> READY_CHECK (P2 joined)`);
+      
+      // Notify Player 1 that Player 2 has joined - send direct event
+      if (lobbyState.players[1]) {
+        console.log(`📝 P1 socket ID in lobby: ${lobbyState.players[1].socketId}`);
+        const p1Socket = io.sockets.sockets.get(lobbyState.players[1].socketId);
+        if (p1Socket) {
+          console.log(`📝 Found P1 socket, sending player2Joined event`);
+          p1Socket.emit('player2Joined', { name: name });
+        } else {
+          console.log(`⚠️ Could not find P1 socket! Socket ID: ${lobbyState.players[1].socketId}`);
+          console.log(`⚠️ Available sockets:`, Array.from(io.sockets.sockets.keys()));
+          
+          // Fallback: try to find P1's socket from controllers map
+          for (const [socketId, controller] of controllers.entries()) {
+            if (controller.playerNumber === 1) {
+              console.log(`📝 Found P1 in controllers map with socket: ${socketId}`);
+              const fallbackSocket = io.sockets.sockets.get(socketId);
+              if (fallbackSocket) {
+                console.log(`📝 Sending player2Joined via fallback`);
+                fallbackSocket.emit('player2Joined', { name: name });
+                // Update the lobby state with correct socket ID
+                lobbyState.players[1].socketId = socketId;
+              }
+              break;
+            }
+          }
+        }
+      } else {
+        console.log(`⚠️ No P1 in lobby state!`);
+      }
     }
     
     socket.emit('nameAccepted', { name });
@@ -284,6 +371,7 @@ io.on('connection', (socket) => {
     const mode = data.mode; // 'PVP' or 'PVC'
     lobbyState.gameMode = mode;
     console.log(`🎯 Game mode selected: ${mode}`);
+    console.log(`🎯 Current controllers:`, Array.from(controllers.entries()));
     
     if (mode === 'PVC') {
       // In PvC mode, randomly assign red or blue to player
@@ -302,6 +390,7 @@ io.on('connection', (socket) => {
       // PVP - show QR for Player 2
       lobbyState.state = LOBBY_STATE.WAITING_FOR_P2;
       lobbyState.showQR = true;
+      console.log(`🎯 State set to WAITING_FOR_P2, showQR = true`);
     }
     
     socket.emit('modeAccepted', { mode });
@@ -338,18 +427,26 @@ io.on('connection', (socket) => {
   // Handle ready button
   socket.on('playerReady', () => {
     const controller = controllers.get(socket.id);
-    if (!controller) return;
+    if (!controller) {
+      console.log(`⚠️ playerReady from unknown controller: ${socket.id}`);
+      return;
+    }
     
     const playerNum = controller.playerNumber;
+    console.log(`✅ Player ${playerNum} pressed ready`);
+    console.log(`✅ Lobby state: ${lobbyState.state}, P1 ready: ${lobbyState.players[1]?.ready}, P2 ready: ${lobbyState.players[2]?.ready}`);
+    
     if (lobbyState.players[playerNum]) {
       lobbyState.players[playerNum].ready = true;
-      console.log(`✅ Player ${playerNum} is ready!`);
+      console.log(`✅ Player ${playerNum} is now ready!`);
       
       socket.emit('readyAccepted');
       broadcastLobbyState();
       
       // Check if we can start
       checkAndStartGame();
+    } else {
+      console.log(`⚠️ Player ${playerNum} not in lobby state`);
     }
   });
   
@@ -362,15 +459,26 @@ io.on('connection', (socket) => {
     }
   });
   
-  // Handle restart request
-  socket.on('restartGame', () => {
-    console.log('🔄 Game restart requested');
-    resetLobby();
-  });
+  // REMOVED: restartGame and requestRematch handlers - rematch feature removed
   
-  // Handle player leaving
+  // Handle player leaving (simplified - just reset lobby)
   socket.on('leaveGame', () => {
-    handleDisconnect(socket);
+    const controller = controllers.get(socket.id);
+    if (!controller) return;
+    
+    const playerNum = controller.playerNumber;
+    console.log(`👋 Player ${playerNum} is leaving`);
+    
+    // Confirm leave to the departing player
+    socket.emit('leftGame');
+    
+    // Remove from tracking
+    gameEngine.removePlayer(socket.id);
+    controllers.delete(socket.id);
+    lobbyState.players[playerNum] = null;
+    
+    // Reset lobby (game is over, start fresh)
+    resetLobby();
   });
   
   // Handle disconnection
@@ -388,15 +496,79 @@ io.on('connection', (socket) => {
     const controller = controllers.get(socket.id);
     if (controller) {
       const playerNum = controller.playerNumber;
-      console.log(`👋 Player ${playerNum} left the game`);
+      console.log(`👋 Player ${playerNum} disconnected`);
       
+      // During gameplay, use grace period
+      if (lobbyState.state === LOBBY_STATE.PLAYING && lobbyState.gameMode === 'PVP') {
+        // Pause the game and wait for reconnection
+        console.log(`⏸️ Pausing game - waiting 5 seconds for Player ${playerNum} to reconnect`);
+        
+        lobbyState.state = LOBBY_STATE.PAUSED;
+        lobbyState.disconnectedPlayer = playerNum;
+        gameEngine.stop();
+        
+        // Broadcast pause state
+        io.emit('gamePaused', { 
+          reason: 'disconnect', 
+          playerNum: playerNum,
+          playerName: lobbyState.players[playerNum]?.name || `Player ${playerNum}`,
+          countdown: 5
+        });
+        
+        // Start countdown
+        let countdown = 5;
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          io.emit('pauseCountdown', { countdown });
+          
+          if (countdown <= 0) {
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+        
+        // Set 5-second timer for forfeit
+        lobbyState.disconnectTimer = setTimeout(() => {
+          clearInterval(countdownInterval);
+          
+          // Player didn't reconnect - opponent wins by forfeit
+          const winnerNum = playerNum === 1 ? 2 : 1;
+          console.log(`⏰ Player ${playerNum} didn't reconnect. Player ${winnerNum} wins by forfeit!`);
+          
+          // Clean up disconnected player
+          gameEngine.removePlayer(socket.id);
+          controllers.delete(socket.id);
+          lobbyState.players[playerNum] = null;
+          lobbyState.disconnectedPlayer = null;
+          lobbyState.disconnectTimer = null;
+          
+          // Award win and go to game over
+          lobbyState.state = LOBBY_STATE.GAME_OVER;
+          io.emit('forfeitWin', { winner: winnerNum });
+          
+          // Reset to lobby after a delay
+          setTimeout(() => {
+            // Clear controllers and reset lobby (simplified - no rematch)
+            controllers.clear();
+            resetLobby();
+          }, 5000);
+          
+        }, 5000);
+        
+        return; // Don't remove player yet - wait for timeout or reconnection
+      }
+      
+      // Not during gameplay or PvC mode - remove immediately
       gameEngine.removePlayer(socket.id);
       controllers.delete(socket.id);
       
-      // Reset lobby if a player disconnects during game
+      // Reset lobby if a player disconnects during game (PvC) or lobby
       if (lobbyState.state === LOBBY_STATE.PLAYING) {
-        // Game was in progress - for now, reset everything
-        // (Future: could pause and wait for reconnection)
+        // PvC game - just reset
+        resetLobby();
+      } else if (lobbyState.state === LOBBY_STATE.GAME_OVER) {
+        // At game over screen - just reset lobby
+        lobbyState.players[playerNum] = null;
+        controllers.clear();
         resetLobby();
       } else {
         // In lobby - remove the player and adjust state
@@ -416,6 +588,40 @@ io.on('connection', (socket) => {
       }
     }
   }
+  
+  // Handle reconnection during grace period
+  socket.on('reconnectPlayer', (data) => {
+    if (lobbyState.state !== LOBBY_STATE.PAUSED) return;
+    if (lobbyState.disconnectedPlayer === null) return;
+    
+    const playerNum = data.playerNumber;
+    if (playerNum !== lobbyState.disconnectedPlayer) return;
+    
+    console.log(`🔌 Player ${playerNum} reconnected!`);
+    
+    // Clear the forfeit timer
+    if (lobbyState.disconnectTimer) {
+      clearTimeout(lobbyState.disconnectTimer);
+      lobbyState.disconnectTimer = null;
+    }
+    
+    // Update socket ID for the player
+    const oldSocketId = lobbyState.players[playerNum]?.socketId;
+    if (oldSocketId) {
+      controllers.delete(oldSocketId);
+    }
+    
+    controllers.set(socket.id, { playerNumber: playerNum });
+    lobbyState.players[playerNum].socketId = socket.id;
+    lobbyState.disconnectedPlayer = null;
+    
+    // Resume game
+    lobbyState.state = LOBBY_STATE.PLAYING;
+    io.emit('gameResumed');
+    gameEngine.start();
+    
+    broadcastLobbyState();
+  });
 });
 
 // --- Start Server ---
