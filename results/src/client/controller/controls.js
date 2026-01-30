@@ -5,12 +5,18 @@
  * 1. Connects to the server via Socket.io
  * 2. Sends input events when UP/DOWN buttons are pressed
  * 3. Uses touchstart for faster response (no 300ms delay like click)
+ * 4. Displays player assignment (which paddle color you control)
  */
 
 // --- DOM Elements ---
 const btnUp = document.getElementById('btn-up');
 const btnDown = document.getElementById('btn-down');
 const connectionStatus = document.getElementById('connection-status');
+const playerInfo = document.getElementById('player-info');
+
+// --- Player State ---
+let myPaddleNumber = null;
+let myColor = null;
 
 // --- Socket.io Connection ---
 const socket = io();
@@ -20,12 +26,16 @@ socket.on('connect', () => {
   console.log('Connected to server');
   connectionStatus.textContent = 'Connected';
   connectionStatus.className = 'connected';
+  
+  // Automatically join the game when connected
+  socket.emit('joinGame', { name: 'Player' });
 });
 
 socket.on('disconnect', () => {
   console.log('Disconnected from server');
   connectionStatus.textContent = 'Disconnected';
   connectionStatus.className = 'disconnected';
+  myPaddleNumber = null;
 });
 
 socket.on('connect_error', () => {
@@ -33,9 +43,68 @@ socket.on('connect_error', () => {
   connectionStatus.className = 'disconnected';
 });
 
+// Handle player assignment
+socket.on('playerAssigned', (data) => {
+  myPaddleNumber = data.paddleNumber;
+  myColor = data.color;
+  console.log(`Assigned as Player ${myPaddleNumber} with color ${myColor}`);
+  
+  // Update UI to show player info
+  if (playerInfo) {
+    playerInfo.textContent = `Player ${myPaddleNumber}`;
+    playerInfo.style.backgroundColor = myColor;
+  }
+  
+  // Update button colors to match paddle
+  updateButtonColors(myColor);
+});
+
+// Handle game full
+socket.on('gameFull', (data) => {
+  connectionStatus.textContent = 'Game Full';
+  connectionStatus.className = 'disconnected';
+  if (playerInfo) {
+    playerInfo.textContent = 'Spectating';
+  }
+});
+
+// Handle game state updates (for restart detection)
+socket.on('gameState', (state) => {
+  // If game is over and player presses a button, they can restart
+  if (state.phase === 'GAME_OVER') {
+    // Allow restart on next button press
+  }
+});
+
 // Initial connecting state
 connectionStatus.textContent = 'Connecting...';
 connectionStatus.className = 'connecting';
+
+// --- UI Updates ---
+
+/**
+ * Update button colors to match assigned paddle color
+ */
+function updateButtonColors(color) {
+  // Create gradient based on paddle color
+  const lighterColor = color;
+  const darkerColor = adjustBrightness(color, -30);
+  
+  btnUp.style.background = `linear-gradient(180deg, ${lighterColor} 0%, ${darkerColor} 100%)`;
+  btnDown.style.background = `linear-gradient(180deg, ${lighterColor} 0%, ${darkerColor} 100%)`;
+}
+
+/**
+ * Adjust color brightness
+ */
+function adjustBrightness(hex, percent) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+  const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+}
 
 // --- Input Handling ---
 
