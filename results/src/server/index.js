@@ -154,6 +154,9 @@ function checkAndStartGame() {
     lobbyState.showQR = false;
     broadcastLobbyState();
     
+    // Configure game engine with mode and difficulty
+    gameEngine.setGameMode(lobbyState.gameMode, lobbyState.aiDifficulty);
+    
     // Start the game engine
     setTimeout(() => {
       lobbyState.state = LOBBY_STATE.PLAYING;

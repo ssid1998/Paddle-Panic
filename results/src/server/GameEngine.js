@@ -6,7 +6,10 @@
  * 2. Updates ball position and checks collisions
  * 3. Manages scoring and game state
  * 4. Broadcasts state to all clients
+ * 5. Controls RoboPaddle AI when in PvC mode
  */
+
+const RoboPaddleAI = require('./RoboPaddleAI');
 
 class GameEngine {
   constructor(io) {
@@ -14,6 +17,12 @@ class GameEngine {
     this.tickRate = 60; // 60 FPS
     this.tickInterval = 1000 / this.tickRate; // ~16.67ms
     this.gameLoop = null;
+    
+    // AI opponent
+    this.roboPaddle = null;
+    this.gameMode = null;    // 'PVP' or 'PVC'
+    this.aiDifficulty = null; // 'EASY', 'MEDIUM', 'HARD'
+    this.lastTickTime = Date.now();
     
     // Game states
     this.STATE = {
@@ -102,6 +111,14 @@ class GameEngine {
     
     console.log('🎮 Game engine started');
     
+    // Reset tick timing
+    this.lastTickTime = Date.now();
+    
+    // Reset AI state for new game
+    if (this.roboPaddle) {
+      this.roboPaddle.reset();
+    }
+    
     // Start with countdown
     this.startCountdown();
     
@@ -127,7 +144,25 @@ class GameEngine {
   reset() {
     this.stop();
     this.initializeGameState();
+    this.roboPaddle = null;
+    this.gameMode = null;
+    this.aiDifficulty = null;
     this.broadcastState();
+  }
+  
+  /**
+   * Set game mode and AI difficulty (called before start)
+   */
+  setGameMode(mode, difficulty = null) {
+    this.gameMode = mode;
+    this.aiDifficulty = difficulty;
+    
+    if (mode === 'PVC' && difficulty) {
+      this.roboPaddle = new RoboPaddleAI(difficulty);
+      console.log(`🤖 RoboPaddle AI created with ${difficulty} difficulty`);
+    } else {
+      this.roboPaddle = null;
+    }
   }
   
   /**
@@ -187,6 +222,19 @@ class GameEngine {
   tick() {
     if (this.state.phase !== this.STATE.PLAYING) {
       return; // Only update during active play
+    }
+    
+    // Calculate delta time
+    const now = Date.now();
+    const deltaTime = now - this.lastTickTime;
+    this.lastTickTime = now;
+    
+    // Update AI if in PvC mode
+    if (this.gameMode === 'PVC' && this.roboPaddle) {
+      const aiResult = this.roboPaddle.update(this.state, deltaTime);
+      if (aiResult && typeof aiResult.paddleY === 'number') {
+        this.state.paddle2.y = aiResult.paddleY;
+      }
     }
     
     this.updateBall();
