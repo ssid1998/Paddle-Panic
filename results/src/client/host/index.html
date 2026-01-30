@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paddle Panic - Host Screen</title>
+    <link rel="stylesheet" href="/host/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1 id="game-title">PADDLE PANIC</h1>
+        <p id="game-subtitle">Open /controller on your phone to play!</p>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    
+    <!-- Socket.io client library (served automatically by socket.io server) -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/host/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paddle Panic - Controller</title>
+    <link rel="stylesheet" href="/controller/styles.css">
+</head>
+<body>
+    <div id="controller-container">
+        <div id="status-bar">
+            <span id="connection-status">Connecting...</span>
+        </div>
+        
+        <button id="btn-up" class="control-btn">
+            <span class="arrow">▲</span>
+            <span class="label">UP</span>
+        </button>
+        
+        <button id="btn-down" class="control-btn">
+            <span class="arrow">▼</span>
+            <span class="label">DOWN</span>
+        </button>
+    </div>
+    
+    <!-- Socket.io client library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/controller/controls.js"></script>
+</body>
+</html>

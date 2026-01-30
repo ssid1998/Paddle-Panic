@@ -1,0 +1,110 @@
+/* Controller Styles - Mobile Optimized */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* Prevent text selection on buttons */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Prevent callouts on long press */
+    -webkit-touch-callout: none;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    /* Prevent pull-to-refresh */
+    overscroll-behavior: none;
+}
+
+body {
+    background-color: #1a1a2e;
+    font-family: 'Arial', sans-serif;
+    /* Disable touch zoom */
+    touch-action: manipulation;
+}
+
+#controller-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+#status-bar {
+    height: 40px;
+    background-color: #16213e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px solid #0f3460;
+}
+
+#connection-status {
+    font-size: 14px;
+    font-weight: bold;
+    padding: 5px 15px;
+    border-radius: 20px;
+}
+
+#connection-status.connected {
+    background-color: #27ae60;
+    color: white;
+}
+
+#connection-status.disconnected {
+    background-color: #e74c3c;
+    color: white;
+}
+
+#connection-status.connecting {
+    background-color: #f39c12;
+    color: white;
+}
+
+.control-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.1s;
+    /* Prevent button outline on touch */
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:active {
+    filter: brightness(0.7);
+}
+
+#btn-up {
+    background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
+}
+
+#btn-down {
+    background: linear-gradient(180deg, #2980b9 0%, #1a5276 100%);
+}
+
+.control-btn .arrow {
+    font-size: 80px;
+    color: white;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn .label {
+    font-size: 32px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 10px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Pressed state visual feedback */
+.control-btn.pressed {
+    filter: brightness(0.6);
+    transform: scale(0.98);
+}
