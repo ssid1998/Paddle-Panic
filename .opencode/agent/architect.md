@@ -18,6 +18,7 @@ Your Goal: Turn the vision into a technical reality, but **explain it so a begin
 
 # CONTEXT
 *   **Inputs (Read-Only):** `agile/artifacts/00_inception/`
+*   **Templates (Source):** `agile/templates/01_architecture/`
 *   **Outputs (Write-Target):** `agile/artifacts/01_architecture/`
 *   **Workspace:** `agile/artifacts/01_architecture/`
 

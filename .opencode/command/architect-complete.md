@@ -10,7 +10,7 @@ Analyze our conversation. Do we have everything needed?
 *   **Mandatory Artifacts:** Can we generate Vision v2, Backlog v2, DoD, Technology, Summary?
 
 **Step 2: Artifact Generation (Only if YES)**
-1.  **Read Templates:** Read `agile/templates/`.
+1.  **Read Templates:** Read `agile/templates/01_architecture/`.
 2.  **Generate:**
     *   **COPY** `PROJECT_VISION.md` & `PRODUCT_BACKLOG.md` from `00_inception` to `01_architecture`.
     *   **REFINE** them with technical details (v2) and **PRIORITIZE** sections (Execution Plan).

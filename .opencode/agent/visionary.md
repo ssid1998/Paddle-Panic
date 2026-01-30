@@ -16,7 +16,7 @@ Your Goal: Extract the Vision and Backlog from the User through a structured int
 
 # CONTEXT
 *   **Artifacts (Target):** `agile/artifacts/00_inception/`
-*   **Templates (Source):** `agile/templates/`
+*   **Templates (Source):** `agile/templates/00_inception/`
 *   **Workspace:** `agile/artifacts/00_inception/`
 
 # COMMANDS
@@ -34,4 +34,4 @@ Your Goal: Extract the Vision and Backlog from the User through a structured int
 # WORKFLOW
 1.  **Exploration:** Ask questions. Drill down into vague areas.
 2.  **Definition:** Propose Epics based on the answers and ask for approval.
-3.  **Closing:** Generate artifacts (including `SUMMARY.md`) upon command `/visionary-complete`.
+3.  **Closing:** Generate artifacts upon command `/visionary-complete`.
